@@ -12,22 +12,26 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('attributes', function (Blueprint $table) {
-            $table->id();
-            $table->string('name');
+            $table->bigIncrements('id'); 
+            $table->string('name')->index(); 
             $table->enum('type', ['text', 'number', 'boolean', 'date', 'select']);
-            $table->json('options')->nullable(); // For select type
+            $table->json('options')->nullable(); 
             $table->timestamps();
         });
-
+        
         Schema::create('job_attribute_values', function (Blueprint $table) {
-            $table->id();
+            $table->bigIncrements('id'); 
             $table->foreignId('job_id')->constrained()->onDelete('cascade');
             $table->foreignId('attribute_id')->constrained()->onDelete('cascade');
             $table->text('value');
             $table->timestamps();
+        
+            $table->index(['job_id', 'attribute_id']);
         });
+        
     }
 
+    
     /**
      * Reverse the migrations.
      */

@@ -12,18 +12,20 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('jobs', function (Blueprint $table) {
-            $table->id();
-            $table->string('title');
+            
+            $table->bigIncrements('id'); 
+            $table->string('title')->index();
             $table->text('description');
             $table->string('company_name');
             $table->decimal('salary_min', 10, 2)->nullable();
             $table->decimal('salary_max', 10, 2)->nullable();
-            $table->boolean('is_remote')->default(false);
-            $table->enum('job_type', ['full-time', 'part-time', 'contract', 'freelance']);
+            $table->boolean('is_remote')->default(false)->index(); // Added index
+            $table->enum('job_type', ['full-time', 'part-time', 'contract', 'freelance'])->index(); // Added index
             $table->enum('status', ['draft', 'published', 'archived'])->default('draft');
             $table->timestamp('published_at')->nullable();
             $table->timestamps();
         });
+        
     }
 
     /**

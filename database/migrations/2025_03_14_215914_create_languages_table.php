@@ -12,14 +12,19 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('languages', function (Blueprint $table) {
-            $table->id();
+            $table->bigIncrements('id');
             $table->string('name')->unique();
             $table->timestamps();
         });
-
+        
         Schema::create('job_language', function (Blueprint $table) {
-            $table->foreignId('job_id')->constrained()->onDelete('cascade');
-            $table->foreignId('language_id')->constrained()->onDelete('cascade');
+            $table->bigInteger('job_id')->unsigned();
+            $table->bigInteger('language_id')->unsigned();
+        
+            $table->foreign('job_id')->references('id')->on('jobs')->onDelete('cascade');
+            $table->foreign('language_id')->references('id')->on('languages')->onDelete('cascade');
+        
+            $table->primary(['job_id', 'language_id']);
         });
     }
 

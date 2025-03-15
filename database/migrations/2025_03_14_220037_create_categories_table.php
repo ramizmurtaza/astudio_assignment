@@ -12,15 +12,19 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('categories', function (Blueprint $table) {
-            $table->id();
-            $table->string('name')->unique();
+
+            $table->bigIncrements('id'); 
+            $table->string('name')->unique()->index();
             $table->timestamps();
         });
-
+        
         Schema::create('job_category', function (Blueprint $table) {
+            
             $table->foreignId('job_id')->constrained()->onDelete('cascade');
             $table->foreignId('category_id')->constrained()->onDelete('cascade');
+            $table->primary(['job_id', 'category_id']);
         });
+
     }
 
     /**
