@@ -5,10 +5,11 @@ namespace App\Services;
 use Illuminate\Http\Request;
 use Illuminate\Database\Eloquent\Builder;
 use App\Models\Job;
+use Illuminate\Support\Facades\Schema;
 
 class JobFilterService
 {
-    public function applyFilters(Request $request)
+    public function applyFilters(Request $request): Builder
     {
         $query = Job::query();
 
@@ -17,7 +18,6 @@ class JobFilterService
             $this->applyQueryFilters($query, $filters);
         }
 
-       
         return $query;
     }
 
@@ -25,7 +25,6 @@ class JobFilterService
     {
         // Convert the string into structured filter conditions
         // Example: "job_type=full-time AND (languages HAS_ANY (PHP,JavaScript))"
-       
         return $this->parseLogicalOperators($filterString);
     }
 
@@ -54,7 +53,7 @@ class JobFilterService
                 }
                 $first = false;
             } elseif (isset($filter['operator'])) {
-                // Ensure the filter contains valid conditions before applying
+                // ✅ Ensure the filter contains valid conditions before applying
                 if (isset($filter[0]) && is_array($filter[0])) {
                     $query->where(function ($subQuery) use ($filter) {
                         $this->applyFilterGroup($subQuery, $filter[0], $filter['operator']);
@@ -65,37 +64,53 @@ class JobFilterService
     }
 
 
-    private function applyBasicFilter(Builder &$query, array $filter, $first, $boolean){
-            
-            $method = $first ? 'where' : ($boolean === 'AND' ? 'where' : 'orWhere');
+    private function applyBasicFilter(Builder &$query, array $filter, $first, $boolean)
+    {
+        $method = $first ? 'where' : ($boolean === 'AND' ? 'where' : 'orWhere');
 
-            if ($filter['operator'] === 'LIKE') {
-                $query->$method($filter['field'], 'LIKE', "%{$filter['value']}%");
-            } elseif ($filter['operator'] === 'IN') {
-                $query->{$method . 'In'}($filter['field'], $filter['value']); 
-            } else {
-                $query->$method($filter['field'], $filter['operator'], $filter['value']);
-            }
+        // ✅ Check if the column exists in the jobs table before querying
+        if (!Schema::hasColumn('jobs', $filter['field'])) {
+            return; // Skip invalid columns
         }
 
-    private function applyRelationshipFilter(Builder &$query, array $filter, $first, $boolean){
-
-        $method = $first ? 'whereHas' : ($boolean === 'AND' ? 'whereHas' : 'orWhereHas');
-
-        $query->$method($filter['relation'], function ($q) use ($filter) {
-            if ($filter['operator'] === 'HAS_ANY') {
-                $q->whereIn('name', $filter['values']);
-            } elseif ($filter['operator'] === 'IS_ANY') {
-                $q->whereIn('name', $filter['values']);
-            }
-        });
+        if ($filter['operator'] === 'LIKE') {
+            $query->$method($filter['field'], 'LIKE', "%{$filter['value']}%");
+        } elseif ($filter['operator'] === 'IN') {
+            $query->{$method . 'In'}($filter['field'], $filter['value']); // ✅ Correctly handle `IN`
+        } elseif ($filter['field'] === 'is_remote') {
+            // ✅ Ensure proper boolean handling
+            $query->$method($filter['field'], filter_var($filter['value'], FILTER_VALIDATE_BOOLEAN));
+        } else {
+            $query->$method($filter['field'], $filter['operator'], $filter['value']);
+        }
     }
 
-    private function applyEAVFilter(Builder &$query, array $filter, $first, $boolean){
-
+    private function applyRelationshipFilter(Builder &$query, array $filter, $first, $boolean)
+    {
         $method = $first ? 'whereHas' : ($boolean === 'AND' ? 'whereHas' : 'orWhereHas');
 
-        // Use `jobAttributes()` instead of `attributes()`
+        if ($filter['relation'] === 'locations') {
+            $query->$method('locations', function ($q) use ($filter) {
+                $q->where(function ($subQuery) use ($filter) {
+                    foreach ($filter['values'] as $location) {
+                        $subQuery->orWhere('city', 'LIKE', "%{$location}%")
+                            ->orWhere('state', 'LIKE', "%{$location}%")
+                            ->orWhere('country', 'LIKE', "%{$location}%");
+                    }
+                });
+            });
+        } else {
+            $query->$method($filter['relation'], function ($q) use ($filter) {
+                $q->whereIn("{$filter['relation']}.name", $filter['values']);
+            });
+        }
+    }
+
+    private function applyEAVFilter(Builder &$query, array $filter, $first, $boolean)
+    {
+        $method = $first ? 'whereHas' : ($boolean === 'AND' ? 'whereHas' : 'orWhereHas');
+
+        // ✅ Use `jobAttributes()` instead of `attributes()`
         $query->$method('jobAttributes', function ($q) use ($filter) {
             $q->whereHas('attribute', function ($attrQuery) use ($filter) {
                 $attrQuery->where('name', $filter['attribute']);
@@ -112,8 +127,8 @@ class JobFilterService
     /**
      * Tokenizes the filter string into an array of conditions, operators, and parentheses.
      */
-    private function tokenizeFilterString($filterString){
-
+    private function tokenizeFilterString($filterString)
+    {
         // Improved regex:
         // - Matches AND, OR (case insensitive)
         // - Matches conditions (e.g., job_type=full-time, attribute:years_experience>=3)
@@ -121,7 +136,7 @@ class JobFilterService
         $pattern = '/(\(|\)|\bAND\b|\bOR\b|[\w\.:]+(?:\s*(?:=|!=|>=|<=|>|<|LIKE|IN|HAS_ANY|IS_ANY)\s*(?:\([^)]+\)|[^()\s]+)))/i';
 
         preg_match_all($pattern, $filterString, $matches);
-      
+
         // Remove empty elements and trim spaces
         return array_map('trim', array_filter($matches[0]));
     }
@@ -129,8 +144,8 @@ class JobFilterService
     /**
      * Builds a nested condition tree from tokens.
      */
-    private function buildConditionTree(&$tokens) {
-
+    private function buildConditionTree(&$tokens)
+    {
         $conditions = [];
         $currentGroup = [];
 
@@ -158,15 +173,18 @@ class JobFilterService
                 }
             }
         }
-      
+
         return $currentGroup;
     }
+
+
+
 
     /**
      * Parses individual conditions like "job_type=full-time" into structured format.
      */
-    private function parseCondition($condition){
-
+    private function parseCondition($condition)
+    {
         preg_match('/([\w\.:]+)\s*(=|!=|>=|<=|>|<|LIKE|IN|HAS_ANY|IS_ANY)\s*(.+)/i', $condition, $matches);
 
         if (count($matches) < 4) {
@@ -202,7 +220,6 @@ class JobFilterService
             ];
         }
 
-
         // Otherwise, it's a basic filter
         return [
             'type' => 'basic',
@@ -212,10 +229,12 @@ class JobFilterService
         ];
     }
 
-    private function parseLogicalOperators($filterString){
-       
+
+
+
+    private function parseLogicalOperators($filterString)
+    {
         $tokens = $this->tokenizeFilterString($filterString);
         return $this->buildConditionTree($tokens);
     }
-    
 }
