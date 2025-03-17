@@ -9,10 +9,17 @@ use Illuminate\Support\Facades\Schema;
 
 class JobFilterService
 {
+    /**
+     * Applies filters to the job query based on the request.
+     * 
+     * @param Request $request
+     * @return Builder
+     */
     public function applyFilters(Request $request): Builder
     {
         $query = Job::query();
 
+        // Check if filters are provided in the request
         if ($request->has('filter')) {
             $filters = $this->parseFilters($request->input('filter'));
             $this->applyQueryFilters($query, $filters);
@@ -21,22 +28,40 @@ class JobFilterService
         return $query;
     }
 
+    /**
+     * Parses the filter string into structured filter conditions.
+     * 
+     * @param string $filterString
+     * @return array
+     */
     private function parseFilters($filterString)
     {
-        // Convert the string into structured filter conditions
-        // Example: "job_type=full-time AND (languages HAS_ANY (PHP,JavaScript))"
+        // Parse logical operators and build condition tree
         return $this->parseLogicalOperators($filterString);
     }
 
+    /**
+     * Applies filters to the query using the structured filter conditions.
+     * 
+     * @param Builder $query
+     * @param array $filters
+     * @return void
+     */
     private function applyQueryFilters(Builder &$query, array $filters)
     {
+        // Apply filters within a closure to handle complex conditions
         $query->where(function ($q) use ($filters) {
             $this->applyFilterGroup($q, $filters);
         });
     }
 
     /**
-     * Recursively applies filters and handles AND/OR logic.
+     * Recursively applies filters to the query and handles AND/OR logic.
+     * 
+     * @param Builder $query
+     * @param array $filters
+     * @param string $boolean
+     * @return void
      */
     private function applyFilterGroup(Builder &$query, array $filters, $boolean = 'AND')
     {
@@ -44,6 +69,7 @@ class JobFilterService
 
         foreach ($filters as $filter) {
             if (isset($filter['type'])) {
+                // Apply filter based on type
                 if ($filter['type'] === 'basic') {
                     $this->applyBasicFilter($query, $filter, $first, $boolean);
                 } elseif ($filter['type'] === 'relationship') {
@@ -53,7 +79,7 @@ class JobFilterService
                 }
                 $first = false;
             } elseif (isset($filter['operator'])) {
-                // ✅ Ensure the filter contains valid conditions before applying
+                // Apply operator logic for complex filters
                 if (isset($filter[0]) && is_array($filter[0])) {
                     $query->where(function ($subQuery) use ($filter) {
                         $this->applyFilterGroup($subQuery, $filter[0], $filter['operator']);
@@ -63,28 +89,45 @@ class JobFilterService
         }
     }
 
-
+    /**
+     * Applies a basic filter to the query (e.g., field = value, LIKE, IN, etc.).
+     * 
+     * @param Builder $query
+     * @param array $filter
+     * @param bool $first
+     * @param string $boolean
+     * @return void
+     */
     private function applyBasicFilter(Builder &$query, array $filter, $first, $boolean)
     {
         $method = $first ? 'where' : ($boolean === 'AND' ? 'where' : 'orWhere');
 
-        // ✅ Check if the column exists in the jobs table before querying
+        // Ensure the column exists before querying
         if (!Schema::hasColumn('jobs', $filter['field'])) {
-            return; // Skip invalid columns
+            return;
         }
 
+        // Apply specific operator conditions
         if ($filter['operator'] === 'LIKE') {
             $query->$method($filter['field'], 'LIKE', "%{$filter['value']}%");
         } elseif ($filter['operator'] === 'IN') {
-            $query->{$method . 'In'}($filter['field'], $filter['value']); // ✅ Correctly handle `IN`
+            $query->{$method . 'In'}($filter['field'], $filter['value']);
         } elseif ($filter['field'] === 'is_remote') {
-            // ✅ Ensure proper boolean handling
             $query->$method($filter['field'], filter_var($filter['value'], FILTER_VALIDATE_BOOLEAN));
         } else {
             $query->$method($filter['field'], $filter['operator'], $filter['value']);
         }
     }
 
+    /**
+     * Applies a relationship filter to the query (e.g., locations, languages).
+     * 
+     * @param Builder $query
+     * @param array $filter
+     * @param bool $first
+     * @param string $boolean
+     * @return void
+     */
     private function applyRelationshipFilter(Builder &$query, array $filter, $first, $boolean)
     {
         $method = $first ? 'whereHas' : ($boolean === 'AND' ? 'whereHas' : 'orWhereHas');
@@ -106,11 +149,19 @@ class JobFilterService
         }
     }
 
+    /**
+     * Applies an EAV (Entity-Attribute-Value) filter to the query.
+     * 
+     * @param Builder $query
+     * @param array $filter
+     * @param bool $first
+     * @param string $boolean
+     * @return void
+     */
     private function applyEAVFilter(Builder &$query, array $filter, $first, $boolean)
     {
         $method = $first ? 'whereHas' : ($boolean === 'AND' ? 'whereHas' : 'orWhereHas');
 
-        // ✅ Use `jobAttributes()` instead of `attributes()`
         $query->$method('jobAttributes', function ($q) use ($filter) {
             $q->whereHas('attribute', function ($attrQuery) use ($filter) {
                 $attrQuery->where('name', $filter['attribute']);
@@ -125,24 +176,27 @@ class JobFilterService
     }
 
     /**
-     * Tokenizes the filter string into an array of conditions, operators, and parentheses.
+     * Tokenizes the filter string into individual tokens for parsing.
+     * 
+     * @param string $filterString
+     * @return array
      */
     private function tokenizeFilterString($filterString)
     {
-        // Improved regex:
-        // - Matches AND, OR (case insensitive)
-        // - Matches conditions (e.g., job_type=full-time, attribute:years_experience>=3)
-        // - Handles nested conditions like (languages HAS_ANY (PHP, JavaScript))
+        // Regex pattern to match conditions and logical operators
         $pattern = '/(\(|\)|\bAND\b|\bOR\b|[\w\.:]+(?:\s*(?:=|!=|>=|<=|>|<|LIKE|IN|HAS_ANY|IS_ANY)\s*(?:\([^)]+\)|[^()\s]+)))/i';
 
         preg_match_all($pattern, $filterString, $matches);
 
-        // Remove empty elements and trim spaces
+        // Return filtered and trimmed tokens
         return array_map('trim', array_filter($matches[0]));
     }
 
     /**
-     * Builds a nested condition tree from tokens.
+     * Builds a condition tree from the tokenized filter string.
+     * 
+     * @param array $tokens
+     * @return array
      */
     private function buildConditionTree(&$tokens)
     {
@@ -153,20 +207,18 @@ class JobFilterService
             $token = array_shift($tokens);
 
             if ($token === '(') {
-                // Recursively process grouped conditions
+                // Recursively handle nested conditions
                 $nestedConditions = $this->buildConditionTree($tokens);
                 if (!empty($nestedConditions)) {
                     $currentGroup = array_merge($currentGroup, $nestedConditions);
                 }
             } elseif ($token === ')') {
-                // Return grouped conditions
                 return $currentGroup;
             } elseif (strtoupper($token) === 'AND' || strtoupper($token) === 'OR') {
                 if (!empty($currentGroup)) {
                     $currentGroup[] = ['operator' => strtoupper($token)];
                 }
             } else {
-                // Parse condition and flatten structure
                 $parsedCondition = $this->parseCondition($token);
                 if ($parsedCondition) {
                     $currentGroup[] = $parsedCondition;
@@ -177,30 +229,29 @@ class JobFilterService
         return $currentGroup;
     }
 
-
-
-
     /**
-     * Parses individual conditions like "job_type=full-time" into structured format.
+     * Parses an individual condition (e.g., job_type=full-time) into structured format.
+     * 
+     * @param string $condition
+     * @return array|null
      */
     private function parseCondition($condition)
     {
         preg_match('/([\w\.:]+)\s*(=|!=|>=|<=|>|<|LIKE|IN|HAS_ANY|IS_ANY)\s*(.+)/i', $condition, $matches);
 
         if (count($matches) < 4) {
-            return null; // Invalid condition
+            return null;
         }
 
         $field = $matches[1];
         $operator = strtoupper($matches[2]);
-        $value = trim($matches[3], '()'); // Remove surrounding parentheses for "IN" values
+        $value = trim($matches[3], '()');
 
-        // Convert comma-separated values into an array for relationships
         if (in_array($operator, ['IN', 'HAS_ANY', 'IS_ANY'])) {
             $value = array_map('trim', explode(',', $value));
         }
 
-        // Fix attribute parsing (remove `attribute:` prefix)
+        // Handle EAV (Entity-Attribute-Value) parsing
         if (str_starts_with($field, 'attribute:')) {
             return [
                 'type' => 'eav',
@@ -210,7 +261,7 @@ class JobFilterService
             ];
         }
 
-        // Check if it's a relationship filter
+        // Handle relationship filters
         if (in_array($field, ['languages', 'locations', 'categories'])) {
             return [
                 'type' => 'relationship',
@@ -220,7 +271,7 @@ class JobFilterService
             ];
         }
 
-        // Otherwise, it's a basic filter
+        // Handle basic filters
         return [
             'type' => 'basic',
             'field' => $field,
@@ -229,9 +280,12 @@ class JobFilterService
         ];
     }
 
-
-
-
+    /**
+     * Parses logical operators in the filter string and builds the condition tree.
+     * 
+     * @param string $filterString
+     * @return array
+     */
     private function parseLogicalOperators($filterString)
     {
         $tokens = $this->tokenizeFilterString($filterString);
