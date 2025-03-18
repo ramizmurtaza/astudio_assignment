@@ -50,6 +50,7 @@ Retrieve job listings with optional filtering.
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `filter` | string | Complex filter query |
+| `pagination` | number | pagination supported |
 
 #### **Example Request:**
 ```sh
