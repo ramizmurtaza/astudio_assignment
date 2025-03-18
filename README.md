@@ -10,7 +10,6 @@ cd astudio_assignment
 ### **2. Install Dependencies**
 ```sh
 composer install
-npm install
 ```
 
 ### **3. Configure Environment**
