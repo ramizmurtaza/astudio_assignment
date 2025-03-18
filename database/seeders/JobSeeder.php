@@ -26,7 +26,7 @@ class JobSeeder extends Seeder
         
         DB::beginTransaction();
         try {
-            // Seed 100 Jobs
+            // Seed 1000 Jobs
             for ($i = 0; $i < 1000; $i++) {
                 
                 // Create Job entry

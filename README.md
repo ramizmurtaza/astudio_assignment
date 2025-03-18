@@ -1,66 +1,197 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Job Board with Advanced Filtering
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+## **Project Setup**
+### **1. Clone the Repository**
+```sh
+git clone https://github.com/ramizmurtaza/astudio_assignment
+cd astudio_assignment
+```
 
-## About Laravel
+### **2. Install Dependencies**
+```sh
+composer install
+npm install
+```
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+### **3. Configure Environment**
+Copy the `.env.example` file and update database settings:
+```sh
+cp .env.example .env
+```
+Edit `.env` and configure your database:
+```env
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=job_board
+DB_USERNAME=root
+DB_PASSWORD=
+```
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+### **4. Run Migrations & Seed Data**
+```sh
+php artisan migrate --seed
+```
+This will create tables and insert dummy data.
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+### **5. Start Development Server**
+```sh
+php artisan serve
+```
+The application will be available at `http://127.0.0.1:8000`.
 
-## Learning Laravel
+---
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+## **API Documentation**
+### **1. List Jobs**
+#### **GET /api/jobs**
+Retrieve job listings with optional filtering.
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+#### **Query Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `filter` | string | Complex filter query |
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+#### **Example Request:**
+```sh
+curl "http://127.0.0.1:8000/api/jobs"
+```
 
-## Laravel Sponsors
+#### **Response Example:**
+```json
+{
+    "status": true,
+    "message": "Request successful.",
+    "data": {
+        "current_page": 1,
+        "data": [
+            {
+                "id": 14,
+                "title": "Instrument Sales Representative",
+                "description": "Esse rerum dolore nulla molestiae qui occaecati officia. Neque maiores dolorem veritatis maxime in cupiditate dolorem. Rerum tempora et quia earum.",
+                "company_name": "Leffler Ltd",
+                "salary_min": "65959.00",
+                "salary_max": "97673.00",
+                "is_remote": false,
+                "job_type": "full-time",
+                "status": "draft",
+                "published_at": "2025-01-04T04:19:20.000000Z",
+                "created_at": "2025-03-16T19:09:47.000000Z",
+                "updated_at": "2025-03-16T19:09:47.000000Z",
+                "languages": [
+                    {
+                        "id": 1,
+                        "name": "PHP"
+                    }
+                ],
+                "locations": [
+                    {
+                        "id": 1,
+                        "city": "New York"
+                    }
+                ],
+                "categories": [
+                    {
+                        "id": 2,
+                        "name": "Data Science"
+                    }
+                ],
+                "job_attributes": [
+                    {
+                        "id": 53,
+                        "job_id": 14,
+                        "attribute_id": 1,
+                        "value": "9",
+                        "created_at": "2025-03-16T19:09:47.000000Z",
+                        "updated_at": "2025-03-16T19:09:47.000000Z",
+                        "attribute": {
+                            "id": 1,
+                            "name": "years_experience",
+                            "type": "number",
+                            "options": null,
+                            "created_at": null,
+                            "updated_at": null
+                        }
+                    }
+                ]
+            }
+        ],
+        "first_page_url": "http:\/\/127.0.0.1:8000\/api\/jobs?page=1",
+        "from": 1,
+        "last_page": 23,
+        "last_page_url": "http:\/\/127.0.0.1:8000\/api\/jobs?page=23",
+        "links": [
+            {
+                "url": null,
+                "label": "&laquo; Previous",
+                "active": false
+            },
+            {
+                "url": "http:\/\/127.0.0.1:8000\/api\/jobs?page=1",
+                "label": "1",
+                "active": true
+            },
+            {
+                "url": "http:\/\/127.0.0.1:8000\/api\/jobs?page=2",
+                "label": "Next &raquo;",
+                "active": false
+            }
+        ],
+        "next_page_url": "http:\/\/127.0.0.1:8000\/api\/jobs?page=2",
+        "path": "http:\/\/127.0.0.1:8000\/api\/jobs",
+        "per_page": 1,
+        "prev_page_url": null,
+        "to": 1,
+        "total": 1
+    }
+}
+```
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+---
 
-### Premium Partners
+## **Filtering Syntax**
+### **Basic Filtering**
+- **Exact Match:** `(job_type=full-time)`
+- **Greater/Less Than:** `(salary_min>=60000)`
+- **Boolean Fields:** `(is_remote=true)`
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[WebReinvent](https://webreinvent.com/)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Jump24](https://jump24.co.uk)**
-- **[Redberry](https://redberry.international/laravel/)**
-- **[Active Logic](https://activelogic.com)**
-- **[byte5](https://byte5.de)**
-- **[OP.GG](https://op.gg)**
+### **Filtering by Relationships**
+- **Languages (HAS_ANY):** `(languages HAS_ANY (PHP,JavaScript))`
+- **Locations (IS_ANY):** `(locations IS_ANY (New York,Remote))`
+- **Categories:** `(categories IS_ANY (Software Development,Marketing))`
 
-## Contributing
+### **Filtering by Dynamic Attributes (EAV)**
+- **Years of Experience:** `(attribute:years_experience>=3)`
+- **Degree Requirement:** `(attribute:degree_required=true)`
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+### **Logical Operators**
+- **AND Condition:** `(job_type=full-time AND salary_min>=60000)`
+- **OR Condition:** `(is_remote=true OR locations IS_ANY (Remote,London))`
+- **Grouped Conditions:** `(job_type=full-time AND (languages HAS_ANY (PHP,JavaScript)))`
 
-## Code of Conduct
+### **Complex Query Example**
+#### **Filter: Full-time jobs requiring PHP or JavaScript, in New York or Remote, with 3+ years of experience**
+```sh
+curl "http://127.0.0.1:8000/api/jobs?filter=(job_type=full-time AND (languages HAS_ANY (PHP,JavaScript))) AND (locations IS_ANY (New York,Remote)) AND attribute:years_experience>=3&pagination=1&per_page=1&page=1"
+```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+#### **Filter: Full-time remote jobs requiring PHP or JavaScript, in New York, with 5+ years of experience**
+```sh
+curl "http://127.0.0.1:8000/api/jobs?filter=(job_type=full-time AND is_remote=true AND (languages HAS_ANY (PHP,JavaScript))) AND (locations IS_ANY (New York)) AND attributes:years_experience>=5)&pagination=1&per_page=10&page=1"
+```
 
-## Security Vulnerabilities
+### **Additional Query Examples**
+#### **Filter: Find remote jobs where the minimum salary is at least $60,000 and the maximum salary does not exceed $120,000**
+```sh
+curl "http://127.0.0.1:8000/api/jobs?filter=(is_remote=true AND salary_min>=60000 AND salary_max<=120000&pagination=1&per_page=20&page=1"
+```
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+#### **Filter: Find remote jobs in the DevOps category where PHP or Laravel is one of the required languages**
+```sh
+curl "http://127.0.0.1:8000/api/jobs?filter=(categories IS_ANY (DevOps) AND (is_remote=true) AND (languages HAS_ANY (PHP,Laravel)) )&pagination=1&per_page=10&page=1"
+```
 
-## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+## **Assumptions & Design Decisions**
+- **EAV Model:** `Allows flexibility for different job types.`
+- **Filtering Syntax:** `Designed to be expressive and readable.`
+- **ndexing Strategy:** `Indexes added to improve performance.`
